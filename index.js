@@ -169,7 +169,8 @@ app.get('/health', (req, res)=>{
 
 
 app.use("*", (req,res)=>{
-    res.end(404)
+    res.status(404)
+    res.end();
 })
 function getAvailableLeftovers(){
     let currentData = new Date();
