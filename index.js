@@ -122,6 +122,11 @@ app.get('/file/target/test_ref', (req, res)=>{
 })
 
 app.post('/file/:counter', upload.single("data"), (req, res)=>{
+    if (req.body.apikey != config.apiKey){
+        res.status(401);
+        res.end();
+        return
+    }
     if (mainConnected){
         mainConnection.put(__dirname+`/uploads/${req.file.filename}`, `files/${req.file.originalname}`, (err)=>{
             if (err) console.error(err);
