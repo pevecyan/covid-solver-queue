@@ -28,7 +28,11 @@ let anonConnection = new ftp();
 let targetTestPro = false;
 let targetTestRef = true
 
-    
+setInterval(()=>{
+    if (mainConnected) {
+        mainReady();
+    }
+}, 1000 * 60 * 125)
 
 
 app.get('/counter', queue({ activeLimit: 1, queuedLimit: -1 }), (req, res)=>{
