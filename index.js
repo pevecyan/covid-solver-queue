@@ -141,7 +141,7 @@ app.post('/file/:counter', upload.single("data"), (req, res)=>{
 });
 
 app.get('/current', (req, res)=>{
-    res.end(activeCounter)
+    res.end(String(activeCounter))
 })
 
 
@@ -155,7 +155,7 @@ app.get('/reset', (req, res)=>{
 })
 
 app.get('/max', (req, res)=>{
-    res.end(maxCount);
+    res.end(String(maxCount));
 })
 
 app.get('/leftovers', (req, res)=>{
