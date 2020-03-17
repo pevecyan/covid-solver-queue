@@ -193,14 +193,19 @@ connectAnon();
 //#region mainConnection
 function connectMain(){
     mainConnected = false;
+    mainConnection  = new ftp();
     mainConnection.connect({host:'ftp.molekule.net', password: config.mainPass, user:config.mainUser});
     mainConnection.on('ready', mainReady);
     mainConnection.on('error', mainError)
-    mainConnection.on('close', mainError)
+    mainConnection.on('close', mainClose)
 
 }
 function mainError(err){
     console.error(err);
+    //setTimeout(connectMain, 10000);
+}
+function mainClose(err){
+    console.error("Main close");
     setTimeout(connectMain, 10000);
 }
 function mainReady(){
@@ -242,14 +247,19 @@ function handleExisting(files){
 //#region anonConnection
 function connectAnon(){
     anonConnected = false;
+    anonConnection  = new ftp();
     anonConnection.connect({host:'ftp.molekule.net'})
     anonConnection.on('ready', anonReady);
     anonConnection.on('error', anonError);
-    anonConnection.on('close', anonError);
+    anonConnection.on('close', anonClose);
 
 }
 function anonError(err){
     console.error(err);
+    //setTimeout(connectAnon, 10000);
+}
+function anonClose(err){
+    console.error("Close");
     setTimeout(connectAnon, 10000);
 }
 function anonReady(){
