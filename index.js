@@ -145,6 +145,14 @@ app.get('/current', (req, res)=>{
 })
 
 
+app.get('/reset', (req, res)=>{
+    if (mainConnected) {
+        mainReady();
+        res.end()
+    }
+    res.status(401);
+    res.end();
+})
 
 app.get('/max', (req, res)=>{
     res.end(maxCount);
