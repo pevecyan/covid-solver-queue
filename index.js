@@ -229,6 +229,7 @@ function handleExisting(files){
     })
 
     let currentData = new Date();
+    leftovers = [];
     currentData = currentData.setHours(currentData.getHours() - 2);
     for (var i = 1; i < max; i++){
         if (!map[i]){
