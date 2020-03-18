@@ -26,7 +26,7 @@ let anonConnection = new ftp();
 
 
 let targetTestPro = false;
-let targetTestRef = true
+let targetTestRef = false;
 
 setInterval(()=>{
     if (mainConnected) {
