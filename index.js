@@ -229,14 +229,20 @@ function handleExisting(files){
     })
 
     let currentData = new Date();
+    oldLeftovers = leftovers;
     leftovers = [];
     currentData = currentData.setHours(currentData.getHours() - 2);
     for (var i = 1; i < max; i++){
         if (!map[i]){
-            leftovers.push({
-                number: i,
-                lastTry: currentData,
-            })
+            let old =oldLeftovers.find(a=>a.number == i)
+            if (old){
+                leftovers.push(old);
+            } else {
+                leftovers.push({
+                    number: i,
+                    lastTry: currentData,
+                })
+            }
         }
     }
     console.log('LEFTOVERS:')
