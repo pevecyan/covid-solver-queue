@@ -185,6 +185,10 @@ app.get('/current', (req, res)=>{
 app.get('/latest', (req, res)=>{
     res.download(__dirname+'/run_flexx.latest.exe');
 })
+app.get('/latest-version', (req, res)=>{
+    let version = fs.readFileSync(__dirname+'/version.latest', 'utf8');
+    res.end(version);
+})
 
 app.get('/reset', (req, res)=>{
     if (mainConnected) {
