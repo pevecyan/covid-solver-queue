@@ -43,12 +43,22 @@ app.get('/counter', queue({ activeLimit: 1, queuedLimit: -1 }), (req, res)=>{
         do {
             activeCounter++;
 
-        }while (Object.keys(existingFiles).length > 0 && (existingFiles[activeCounter] != true || existingFiles[activeCounter] == undefined))
+        }while (Object.keys(existingFiles).length > 0 && (existingFiles[activeCounter] != true || existingFiles[activeCounter] == undefined  ))
         
         if (Object.keys(existingFiles).length > 0 && existingFiles[activeCounter] == undefined) {
             res.end(String(-1));      
             console.log(-1)      
         } else {
+            let l = isLeftover(activeCounter);
+            if (!l.isAvailable) {
+                return res.redirect('/counter');
+            }
+            if (!l.isLeftover) {
+                leftovers.push({
+                    number: activeCounter,
+                    lastTry: new Date(),
+                })
+            }
             res.end(String(activeCounter));
             console.log(activeCounter)
         }
@@ -202,6 +212,21 @@ function getAvailableLeftovers(){
     let currentData = new Date();
     currentData = currentData.setHours(currentData.getHours() - 2);
     return leftovers.filter(a=> a.lastTry < currentData)
+}
+
+function isLeftover(number){
+    let l = leftovers.find(number);
+    let currentData = new Date();
+    if (l){
+        if (l.lastTry < currentData) {
+            return {isLeftover: true, isAvailable: true }
+        }
+        return {isLeftover: true, isAvailable: false }
+
+    }
+    return {isLeftover: false, isAvailable: true }
+
+    
 }
 
 
