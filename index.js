@@ -128,6 +128,8 @@ app.get('/file/target/test_pro', (req, res)=>{
     
 })
 
+
+
 app.get('/file/target/test_ref', (req, res)=>{
     
     if (targetTestRef) {
@@ -180,6 +182,9 @@ app.get('/current', (req, res)=>{
     res.end(String(activeCounter))
 })
 
+app.get('/latest', (req, res)=>{
+    res.download(__dirname+'/run_flexx.latest.exe');
+})
 
 app.get('/reset', (req, res)=>{
     if (mainConnected) {
