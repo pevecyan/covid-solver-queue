@@ -215,7 +215,7 @@ function getAvailableLeftovers(){
 }
 
 function isLeftover(number){
-    let l = leftovers.find(number);
+    let l = leftovers.find(a=>a.number == number);
     let currentData = new Date();
     if (l){
         if (l.lastTry < currentData) {
