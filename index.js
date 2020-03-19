@@ -312,6 +312,6 @@ function handleDown(list){
     maxCount = max;
     console.log('MAX COUNT');
     console.log(max);
-    console.log(existingFiles);
+    console.log(JSON.stringify(existingFiles));
 }
 //#endregion
