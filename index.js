@@ -199,6 +199,11 @@ app.get('/leftovers', (req, res)=>{
     res.end(JSON.stringify(getAvailableLeftovers().map(a=>a.number )));
 })
 
+app.get('/leftovers-all', (req, res)=>{
+    
+    res.end(JSON.stringify(leftovers));
+})
+
 app.get('/health', (req, res)=>{
     res.end('ok');
 });
