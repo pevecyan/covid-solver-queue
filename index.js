@@ -17,6 +17,7 @@ app.use(morgan('tiny'))
 let activeCounter = 0;
 let maxCount = 0;
 let leftovers = [];
+let existingFiles = {}
 
 let mainConnected = false;
 let mainConnection = new ftp();
@@ -37,11 +38,28 @@ setInterval(()=>{
 
 app.get('/counter', queue({ activeLimit: 1, queuedLimit: -1 }), (req, res)=>{
     let a = getAvailableLeftovers()
+    
     if (a.length == 0) {
+        do {
+            activeCounter++;
 
-        res.end(String(activeCounter++));
+        }while (Object.keys(existingFiles).length > 0 && (existingFiles[activeCounter] != true || existingFiles[activeCounter] == undefined))
+        
+        if (Object.keys(existingFiles).length > 0 && existingFiles[activeCounter] == undefined) {
+            res.end(String(-1));            
+        } else {
+            res.end(String(activeCounter));
+        }
     } else {
         let picked = a[0]
+        while (Object.keys(existingFiles).length > 0 && (existingFiles[picked.number] != true || existingFiles[picked.number] == undefined)) {
+            picked.lastTry = new Date();
+            a = getAvailableLeftovers()
+            if (a.length == 0) {
+                return res.redirect('/counter');
+            }
+            picked = a[0]
+        }
         picked.lastTry = new Date();
         res.end(String(picked.number));
     }
@@ -279,9 +297,11 @@ function anonReady(){
     })
 }
 function handleDown(list){
+    existingFiles = {}
     let filtered = list.filter(a=>a.name.match(/3D_structures_/)).map(a=>parseInt(a.name.split('.')[0].replace('3D_structures_', '')));
     let max = 0;
     filtered.forEach(a=>{
+        existingFiles[a] = true;
         if (a > max) {
             max = a;
         }
@@ -289,5 +309,6 @@ function handleDown(list){
     maxCount = max;
     console.log('MAX COUNT');
     console.log(max);
+    console.log(existingFiles);
 }
 //#endregion
