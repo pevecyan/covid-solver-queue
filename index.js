@@ -46,9 +46,11 @@ app.get('/counter', queue({ activeLimit: 1, queuedLimit: -1 }), (req, res)=>{
         }while (Object.keys(existingFiles).length > 0 && (existingFiles[activeCounter] != true || existingFiles[activeCounter] == undefined))
         
         if (Object.keys(existingFiles).length > 0 && existingFiles[activeCounter] == undefined) {
-            res.end(String(-1));            
+            res.end(String(-1));      
+            console.log(-1)      
         } else {
             res.end(String(activeCounter));
+            console.log(activeCounter)
         }
     } else {
         let picked = a[0]
@@ -62,6 +64,7 @@ app.get('/counter', queue({ activeLimit: 1, queuedLimit: -1 }), (req, res)=>{
         }
         picked.lastTry = new Date();
         res.end(String(picked.number));
+        console.log(picked.number)
     }
 });
 
