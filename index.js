@@ -167,6 +167,7 @@ app.post('/file/:counter', upload.single("data"), (req, res)=>{
             else {
                 console.log("Uploaded file");
                 fs.unlinkSync(__dirname+`/uploads/${req.file.filename}`)
+                existingFiles[req.params.counter] = true;
                 res.status(200);
                 res.end();
             }
