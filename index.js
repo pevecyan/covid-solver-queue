@@ -139,7 +139,8 @@ app.get('/file/target/test_ref', (req, res)=>{
             anonConnection.get('TARGETS/TEST_REF.sdf', (err, stream)=>{
                 if (err) {
                     console.error(err);
-                    res.end(402);
+                    res.status(402);
+                    res.end();
                 }else {
                     stream.once('close', function() { 
                         targetTestRef = true;
