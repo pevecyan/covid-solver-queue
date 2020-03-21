@@ -1,10 +1,11 @@
+//@ts-check
 const express = require('express');
 const morgan = require('morgan')
 const queue = require('express-queue');
-const ftp = require('ftp');
 const fs = require('fs');
 var bodyParser = require('body-parser')
 const multer = require('multer');
+const MongoClient = require('mongodb').MongoClient;
 var upload = multer({ dest: 'uploads/' })
 const config = require('./config.json');
 const app = express();
@@ -12,147 +13,158 @@ app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
 // log all requests to access.log
-app.use(morgan('tiny'))
+app.use(morgan('short'))
+
+let availableTargets = [];
+let activeCounters= {};
+let targetLeftovers = {};
+
+let oldClientTarget = 0;
 
 let activeCounter = 0;
 let maxCount = 0;
-let leftovers = [];
-let existingFiles = {}
+let existingInputs = {}
+let existingOutputs = {}
 
-let mainConnected = false;
-let mainConnection = new ftp();
-
-let anonConnected = false;
-let anonConnection = new ftp();
+const dbName = 'covid';
+const client = new MongoClient(config.mongo);
 
 
-let targetTestPro = false;
-let targetTestRef = false;
+let db;
+
+client.connect(function(err) {
+    console.log("Connected successfully to mongo");
+    db = client.db(dbName);
+});
 
 setInterval(()=>{
-    if (mainConnected) {
-        mainReady();
-    }
+    handleExistingFiles()
 }, 1000 * 60 * 125)
 
+app.use((req, res, next)=>{
+    var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    if (db) {
+        let history = db.collection('history')
+        history.insertOne({ip, path: req.path, method: req.method});
+    }
+    next();
+})
 
-app.get('/counter', queue({ activeLimit: 1, queuedLimit: -1 }), (req, res)=>{
-    let a = getAvailableLeftovers()
+app.get('/target', (req, res)=>{
+    for (var i = 0; i < availableTargets.length; i++){
+        let leftovers = getAvailableLeftovers(availableTargets[i]);
+        if (leftovers.length == 0 && activeCounters[availableTargets[i]] >= maxCount) {
+            continue;
+        } 
+        return res.end(String(availableTargets[i]));
+    }
+    res.end(String(-1));
     
-    if (a.length == 0) {
-        do {
-            activeCounter++;
+});
 
-        }while (Object.keys(existingFiles).length > 0 && (existingFiles[activeCounter] != true || existingFiles[activeCounter] == undefined  ))
-        
-        if (Object.keys(existingFiles).length > 0 && existingFiles[activeCounter] == undefined) {
+app.get('/counter', (req, res)=>{
+    let existsTarget = false;
+    for (var i = 0; i < availableTargets.length; i++){
+        let leftovers = getAvailableLeftovers(availableTargets[i]);
+        if (leftovers.length == 0 && activeCounters[availableTargets[i]] >= maxCount) {
+            continue;
+        } 
+        existsTarget = true;
+        oldClientTarget = availableTargets[i];
+        break;
+    }
+    if (!existsTarget) return res.end(String(-1));
+    res.redirect(`/${oldClientTarget}/counter`)
+})
+
+app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res)=>{
+    let {id} = req.params;
+    let leftovers = getAvailableLeftovers(id)
+    if (leftovers.length == 0) {
+        //increase counter until we found nuber that it has a test
+        do {
+            activeCounters[id]++;
+        } while(isPackageNotAvailable(activeCounters[id], id) || isPackageSolved(activeCounters[id], id))
+
+        //Check if over top
+        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounter] == undefined)){
             res.end(String(-1));      
-            console.log(-1)      
+            console.log(-1)  
         } else {
-            let l = isLeftover(activeCounter);
+            let l = isLeftover(activeCounter, id);
             if (!l.isAvailable) {
                 return res.redirect('/counter');
             }
             if (!l.isLeftover) {
-                leftovers.push({
+                targetLeftovers[id].push({
                     number: activeCounter,
                     lastTry: new Date(),
                 })
             }
             res.end(String(activeCounter));
             console.log(activeCounter)
+           //TUAKJ OSTAL
         }
     } else {
-        let picked = a[0]
-        while (Object.keys(existingFiles).length > 0 && (existingFiles[picked.number] != true || existingFiles[picked.number] == undefined)) {
+        let picked = leftovers[0]
+        while (existingOutputs[id][picked.number]==true) {
             picked.lastTry = new Date();
-            a = getAvailableLeftovers()
-            if (a.length == 0) {
+            leftovers = getAvailableLeftovers()
+            if (leftovers.length == 0) {
                 return res.redirect('/counter');
             }
-            picked = a[0]
+            picked = leftovers[0]
         }
         picked.lastTry = new Date();
         res.end(String(picked.number));
         console.log(picked.number)
     }
-});
+})
 
 app.get('/file/down/:counter', (req, res)=>{
-    let counter = req.params.counter;
-    let date = new Date().getTime();
-    if (anonConnected) {
-        anonConnection.get(`DOWN/3D_structures_${counter}.sdf`, (err, stream)=>{
-            if (err) {
-                console.error(err);
-                res.status(402);
-                res.end()
-            }else {
-                stream.once('close', function() { 
-                    res.download(__dirname+`/3D_structures_${counter}.${date}.sdf`,`/3D_structures_${counter}.sdf`, function(err){
-                        if (err) console.error(err);
-                        fs.unlinkSync(__dirname+`/3D_structures_${counter}.${date}.sdf`)
-                    });
-                });
-                stream.pipe(fs.createWriteStream(__dirname+`/3D_structures_${counter}.${date}.sdf`));
-            }
-        })
-    } else {
-        console.error("Anon not connected");
+    let {counter} = req.params;
+    res.redirect(`/${oldClientTarget}/file/down/${counter}`)
+})
+
+app.get('/:id/file/down/:counter', (req, res)=>{
+    let {counter, id} = req.params;
+    try{
+        res.download(`${config.path}/compounds/3D_structures_${counter}.sdf`)
+    } catch (err){
+        console.error("Error downloading file, ",err);
         res.status(402);
         res.end()
     }
-    
 })
 
 app.get('/file/target/test_pro', (req, res)=>{
-
-    if (targetTestPro) {
-        res.download(__dirname+'/TEST_PRO.pdb');
-    } else {
-        if (anonConnected) {
-            anonConnection.get('TARGETS/TEST_PRO.pdb', (err, stream)=>{
-                if (err) {
-                    console.error(err);
-                    res.end(402);
-                }else {
-                    stream.once('close', function() { 
-                        targetTestPro = true;
-                        res.download(__dirname+'/TEST_PRO.pdb');
-                    });
-                    stream.pipe(fs.createWriteStream(__dirname+'/TEST_PRO.pdb'));
-                }
-            })
-        }
-    }
-    
+    res.redirect(`/${oldClientTarget}/file/target/test_pro`)
 })
 
-
+app.get('/:id/file/target/test_pro', (req, res)=>{
+    let {id} = req.params;
+    try{
+        res.download(`${config.path}/targets/${id}/targets/TEST_PRO.pdb`)
+    } catch (err){
+        console.error("Error downloading file, ",err);
+        res.status(402);
+        res.end()
+    }
+})
 
 app.get('/file/target/test_ref', (req, res)=>{
-    
-    if (targetTestRef) {
-        res.download(__dirname+'/TEST_REF.sdf');
-    } else {
-        if (anonConnected) {
-            anonConnection.get('TARGETS/TEST_REF.sdf', (err, stream)=>{
-                if (err) {
-                    console.error(err);
-                    res.status(402);
-                    res.end();
-                }else {
-                    stream.once('close', function() { 
-                        targetTestRef = true;
-                        res.download(__dirname+'/TEST_REF.sdf');
-                    });
-                    stream.pipe(fs.createWriteStream(__dirname+'/TEST_REF.sdf'));
-                }
-            })
-        }
+    res.redirect(`/${oldClientTarget}/file/target/test_ref`)
+})
+
+app.get('/:id/file/target/test_ref', (req, res)=>{
+    let {id} = req.params;
+    try{
+        res.download(`${config.path}/targets/${id}/targets/TEST_REF.sdf`)
+    } catch (err){
+        console.error("Error downloading file, ",err);
+        res.status(402);
+        res.end()
     }
-       
-    
 })
 
 app.post('/file/:counter', upload.single("data"), (req, res)=>{
@@ -161,19 +173,28 @@ app.post('/file/:counter', upload.single("data"), (req, res)=>{
         res.end();
         return
     }
-    if (mainConnected){
-        mainConnection.put(__dirname+`/uploads/${req.file.filename}`, `files/${req.file.originalname}`, (err)=>{
-            if (err) console.error(err);
-            else {
-                console.log("Uploaded file");
-                fs.unlinkSync(__dirname+`/uploads/${req.file.filename}`)
-                existingFiles[req.params.counter] = true;
-                res.status(200);
-                res.end();
-            }
-        })
-       
-    } else {
+    let { counter} = req.params;
+    try{
+        fs.renameSync(__dirname+`/uploads/${req.file.filename}`, `${config.path}/targets/${oldClientTarget}/up/OUT_${counter}.sdf`)
+        res.end();
+    } catch(err){
+        console.error('main not connected')
+        res.status(401);
+        res.end();
+    }
+});
+
+app.post('/:id/file/:counter', upload.single("data"), (req, res)=>{
+    if (req.body.apikey != config.apiKey){
+        res.status(401);
+        res.end();
+        return
+    }
+    let {id, counter} = req.params;
+    try{
+        fs.renameSync(__dirname+`/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf`)
+        res.end();
+    } catch(err){
         console.error('main not connected')
         res.status(401);
         res.end();
@@ -181,178 +202,163 @@ app.post('/file/:counter', upload.single("data"), (req, res)=>{
 });
 
 app.get('/current', (req, res)=>{
-    res.end(String(activeCounter))
+    availableTargets.forEach(t=>{
+        res.send(`${t}: ${activeCounters[t]}`)
+    })
+    res.end()
 })
 
 app.get('/latest', (req, res)=>{
     res.download(__dirname+'/run_flexx.latest.exe');
 })
+
 app.get('/latest-version', (req, res)=>{
     let version = fs.readFileSync(__dirname+'/version.latest', 'utf8');
     res.end(version);
 })
 
 app.get('/reset', (req, res)=>{
-    if (mainConnected) {
-        mainReady();
-        res.end()
-    }
-    res.status(401);
+    handleExistingFiles()
     res.end();
 })
 
 app.get('/max', (req, res)=>{
     res.end(String(maxCount));
 })
-
 app.get('/leftovers', (req, res)=>{
-    
-    res.end(JSON.stringify(getAvailableLeftovers().map(a=>a.number )));
+    availableTargets.forEach(t=>{
+        res.send(`${t}: ${JSON.stringify(getAvailableLeftovers(t).map(a=>a.number ))}`)
+    })
+    res.end();
 })
 
 app.get('/leftovers-all', (req, res)=>{
-    
-    res.end(JSON.stringify(leftovers));
+    availableTargets.forEach(t=>{
+        res.send(`${t}: ${JSON.stringify(targetLeftovers[t])}`)
+    })
+    res.end();
 })
 
 app.get('/health', (req, res)=>{
     res.end('ok');
 });
 
-
 app.use("*", (req,res)=>{
     res.status(404)
     res.end();
 })
-function getAvailableLeftovers(){
-    let currentData = new Date();
-    currentData = currentData.setHours(currentData.getHours() - 2);
-    return leftovers.filter(a=> a.lastTry < currentData)
+
+function isPackageNotAvailable(counter, target){
+    if (Object.keys(existingInputs).length == 0 || counter >= maxCount) return false
+    if (existingInputs[counter] != true ) return true 
 }
 
-function isLeftover(number){
-    let l = leftovers.find(a=>a.number == number);
-    let currentData = new Date();
+function isPackageSolved(counter, target) {
+    if (existingOutputs[target][counter]) return true;
+    return false;
+}
+
+function getAvailableLeftovers(targetID){
+    let currentDate = new Date();
+    let beforeDate = currentDate.setHours(currentDate.getHours() - 2);
+    return targetLeftovers[targetID].filter(a=> a.lastTry < beforeDate);
+
+}
+
+function isLeftover(number, target){
+    let l = targetLeftovers[target].find(a=>a.number == number);
+    let currentDate = new Date();
     if (l){
-        if (l.lastTry < currentData) {
+        if (l.lastTry < currentDate) {
             return {isLeftover: true, isAvailable: true }
         }
         return {isLeftover: true, isAvailable: false }
 
     }
     return {isLeftover: false, isAvailable: true }
-
-    
 }
 
 
 app.listen(8888, ()=>{
     console.log('Server started listening on port 8888')
 });
-connectMain();
-connectAnon();
+handleExistingFiles();
 
-//#region mainConnection
-function connectMain(){
-    mainConnected = false;
-    mainConnection  = new ftp();
-    mainConnection.connect({host:'ftp.molekule.net', password: config.mainPass, user:config.mainUser});
-    mainConnection.on('ready', mainReady);
-    mainConnection.on('error', mainError)
-    mainConnection.on('close', mainClose)
-
-}
-function mainError(err){
-    console.error(err);
-    //setTimeout(connectMain, 10000);
-}
-function mainClose(err){
-    console.error("Main close");
-    setTimeout(connectMain, 10000);
-}
-function mainReady(){
-    mainConnected = true;
-    mainConnection.list('/files',(err, list) =>{
-        if (err) console.error(err);
-        if (!err){
-            handleExisting(list);
+function handleExistingFiles(){
+    //Get all targets
+    let targets = fs.readdirSync(`${config.path}/targets`)
+    if (!targets) {
+        console.error("Error reading targets")
+        return;
+    }
+    targets = targets.filter(a=>a != "sets");
+    targets.forEach(t=>{
+        let target = parseInt(t);
+        if (!isNaN(target)){
+            availableTargets.push(target);
         }
-    });
-}
-function handleExisting(files){
-    let filtered = files.filter(a=>a.name.match(/OUT_/)).map(a=>parseInt(a.name.split('.')[0].replace('OUT_', '')));
+    })
+    oldClientTarget = availableTargets[0];
+
+
+    //Get existing input files 
+    let existing = fs.readdirSync(`${config.path}/compounds`);
+    if (!existing){ return; }
+    let filteredExisting = existing.filter(a=>a.match(/3D_structures_/)).map(a=>parseInt(a.split('.')[0].replace('3D_structures_', '')));
+
     let max = 0;
-    let map = {};
+    filteredExisting.forEach(e=>{
+        existingInputs[e] = true;
+        if (e > max) {
+            max = e;
+        }
+    })
+    maxCount = max;
+
+    //Get existing output files for each target
+    availableTargets.forEach(t=>{
+        handleExistingOutputs(t)
+    })
+
+
+    //Get max counts for each file
+}
+
+function handleExistingOutputs(targetID){
+    activeCounters[targetID] = 0;
+    existingOutputs[targetID] = {};
+    let outputFiles = fs.readdirSync(`${config.path}/targets/${targetID}/up`);
+    if (!outputFiles) return;
+
+    let filtered = outputFiles.filter(a=>a.match(/OUT_/)).map(a=>parseInt(a.split('.')[0].replace('OUT_', '')));
+    let max = 0;
+    let map = {}
     filtered.forEach(a=>{
         if (a > max) {
             max = a;
         }
         map[a] = true;
+        existingOutputs[targetID][a] = true;
     })
-
-    let currentData = new Date();
-    oldLeftovers = leftovers;
-    leftovers = [];
-    currentData = currentData.setHours(currentData.getHours() - 2);
-    for (var i = 1; i < max; i++){
-        if (!map[i]){
-            let old =oldLeftovers.find(a=>a.number == i)
-            if (old){
-                leftovers.push(old);
-            } else {
-                leftovers.push({
-                    number: i,
-                    lastTry: currentData,
-                })
+    let currentDate = new Date();
+    let beforeDate = currentDate.setHours(currentDate.getHours() - 2);
+    let oldLeftovers = targetLeftovers[targetID];
+    if (!oldLeftovers) oldLeftovers = [];
+    targetLeftovers[targetID] = [];
+    for (var i = 1; i < max; i++) {
+        if (!map[i]) {
+            if (existingInputs[i]){
+                let old = oldLeftovers.find(a=>a.number == i);
+                if (old) {
+                    targetLeftovers[targetID].push(old);
+                } else {
+                    targetLeftovers[targetID].push({
+                        number: i,
+                        lastTry: beforeDate,
+                    })
+                }
             }
         }
     }
-    console.log('LEFTOVERS:')
-    console.log(JSON.stringify(leftovers.map(a=>a.number)));
-    activeCounter = max;
+    activeCounters[targetID] = max;
 }
-//#endregion
-
-//#region anonConnection
-function connectAnon(){
-    anonConnected = false;
-    anonConnection  = new ftp();
-    anonConnection.connect({host:'ftp.molekule.net'})
-    anonConnection.on('ready', anonReady);
-    anonConnection.on('error', anonError);
-    anonConnection.on('close', anonClose);
-
-}
-function anonError(err){
-    console.error(err);
-    //setTimeout(connectAnon, 10000);
-}
-function anonClose(err){
-    console.error("Close");
-    setTimeout(connectAnon, 10000);
-}
-function anonReady(){
-    anonConnected = true;
-    anonConnection.list('/DOWN', (err, list)=>{
-        if (err) console.error(err);
-        if (!err) {
-            handleDown(list);
-        }
-    })
-}
-function handleDown(list){
-    existingFiles = {}
-    let filtered = list.filter(a=>a.name.match(/3D_structures_/)).map(a=>parseInt(a.name.split('.')[0].replace('3D_structures_', '')));
-    let max = 0;
-    filtered.forEach(a=>{
-        existingFiles[a] = true;
-        if (a > max) {
-            max = a;
-        }
-    })
-    maxCount = max;
-    console.log('MAX COUNT');
-    console.log(max);
-    console.log(JSON.stringify(existingFiles));
-}
-//#endregion
