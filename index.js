@@ -13,7 +13,7 @@ app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
 // log all requests to access.log
-app.use(morgan('short'))
+app.use(morgan('tiny'))
 
 let availableTargets = [];
 let activeCounters= {};
