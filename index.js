@@ -45,7 +45,7 @@ app.use((req, res, next)=>{
     var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     if (db) {
         let history = db.collection('history')
-        history.insertOne({ip, path: req.path, method: req.method});
+        history.insertOne({ip, path: req.path, method: req.method, timestamp: new Date()});
     }
     next();
 })
