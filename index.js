@@ -177,6 +177,7 @@ app.post('/file/:counter', upload.single("data"), (req, res)=>{
     try{
         fs.renameSync(__dirname+`/uploads/${req.file.filename}`, `${config.path}/targets/${oldClientTarget}/up/OUT_${counter}.sdf`)
         res.end();
+        existingOutputs[oldClientTarget][counter] = true;
     } catch(err){
         console.error('main not connected')
         res.status(401);
@@ -193,6 +194,7 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res)=>{
     let {id, counter} = req.params;
     try{
         fs.renameSync(__dirname+`/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf`)
+        existingOutputs[id][counter] = true;
         res.end();
     } catch(err){
         console.error('main not connected')
