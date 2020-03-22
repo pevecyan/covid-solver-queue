@@ -299,6 +299,10 @@ app.get('/leftovers-all', (req, res)=>{
     res.end(out);
 })
 
+app.get('/inputs', (req, res)=>{
+    res.end(JSON.stringify(existingInputs));
+})
+
 app.get('/old', (req,res)=>{
     res.end(String(oldClientTarget))
 })
