@@ -1,5 +1,5 @@
 # covid-solver-queue
-## api handlers
+## api handlers (old)
 - GET /target
   Returns target to wich should be all the following requests sent
   
