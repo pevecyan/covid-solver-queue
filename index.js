@@ -94,8 +94,8 @@ function getCounter(id){
 
         //Check if over top
         if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounter] == undefined)){
-            return -1;     
             console.log(-1)  
+            return -1;     
         } else {
             let l = isLeftover(activeCounter, id);
             if (!l.isAvailable) {
@@ -107,9 +107,9 @@ function getCounter(id){
                     lastTry: new Date(),
                 })
             }
+            console.log(activeCounter)
             return activeCounter;
             //res.end(String(activeCounter));
-            console.log(activeCounter)
            //TUAKJ OSTAL
         }
     } else {
@@ -124,8 +124,8 @@ function getCounter(id){
             picked = leftovers[0]
         }
         picked.lastTry = new Date();
-        return picked.number;
         console.log(picked.number);
+        return picked.number;
         //res.end(String(picked.number));
         //console.log(picked.number)
     }
