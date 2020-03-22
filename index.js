@@ -258,10 +258,11 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res)=>{
 });
 
 app.get('/current', (req, res)=>{
+    let out = ""
     availableTargets.forEach(t=>{
-        res.send(`${t}: ${activeCounters[t]}`)
+        out += `${t}: ${activeCounters[t]}\n`
     })
-    res.end()
+    res.end(out)
 })
 
 app.get('/latest', (req, res)=>{
