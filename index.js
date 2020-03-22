@@ -282,17 +282,20 @@ app.get('/max', (req, res)=>{
     res.end(String(maxCount));
 })
 app.get('/leftovers', (req, res)=>{
+    let out = "";
+
     availableTargets.forEach(t=>{
-        res.send(`${t}: ${JSON.stringify(getAvailableLeftovers(t).map(a=>a.number ))}`)
+        out += `${t}: ${JSON.stringify(getAvailableLeftovers(t).map(a=>a.number ))}\n`
     })
-    res.end();
+    res.end(out);
 })
 
 app.get('/leftovers-all', (req, res)=>{
+    let out = ""
     availableTargets.forEach(t=>{
-        res.send(`${t}: ${JSON.stringify(targetLeftovers[t])}`)
+        out += `${t}: ${JSON.stringify(targetLeftovers[t])}\n`
     })
-    res.end();
+    res.end(out);
 })
 
 app.get('/old', (req,res)=>{
