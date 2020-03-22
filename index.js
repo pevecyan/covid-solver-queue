@@ -56,6 +56,9 @@ app.get('/target', (req, res) => {
         return res.end(String(availableTargets[i]));
     }
     res.end(String(-1));
+    setTimeout(()=>{
+        process.exit()//This will reset leftovers
+    })
 
 });
 
@@ -153,7 +156,6 @@ app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => 
             }
             res.end(String(activeCounters[id]));
             console.log(activeCounters[id])
-            //TUAKJ OSTAL
         }
     } else {
         let picked = leftovers[0];
