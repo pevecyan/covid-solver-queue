@@ -179,7 +179,7 @@ app.post('/file/:counter', upload.single("data"), (req, res)=>{
         res.end();
         existingOutputs[oldClientTarget][counter] = true;
     } catch(err){
-        console.error('main not connected')
+        console.error('Error moving file', err)
         res.status(401);
         res.end();
     }
@@ -197,7 +197,7 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res)=>{
         existingOutputs[id][counter] = true;
         res.end();
     } catch(err){
-        console.error('main not connected')
+        console.error('Error moving file', err)
         res.status(401);
         res.end();
     }
