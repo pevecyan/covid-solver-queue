@@ -63,6 +63,8 @@ app.get('/target', (req, res)=>{
 });
 
 app.get('/counter', (req, res)=>{
+
+
     let existsTarget = false;
     for (var i = 0; i < availableTargets.length; i++){
         let leftovers = getAvailableLeftovers(availableTargets[i]);
@@ -74,8 +76,60 @@ app.get('/counter', (req, res)=>{
         break;
     }
     if (!existsTarget) return res.end(String(-1));
-    res.redirect(`/${oldClientTarget}/counter`)
+    let num = getCounter(oldClientTarget)
+    if (num == -2) {
+        res.redirect(`/${oldClientTarget}/counter`)
+    } else {
+        res.end(String(num))
+    }
 })
+
+function getCounter(id){
+    let leftovers = getAvailableLeftovers(id)
+    if (leftovers.length == 0) {
+        //increase counter until we found nuber that it has a test
+        do {
+            activeCounters[id]++;
+        } while(isPackageNotAvailable(activeCounters[id], id) || isPackageSolved(activeCounters[id], id))
+
+        //Check if over top
+        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounter] == undefined)){
+            return -1;     
+            console.log(-1)  
+        } else {
+            let l = isLeftover(activeCounter, id);
+            if (!l.isAvailable) {
+                return -2
+            }
+            if (!l.isLeftover) {
+                targetLeftovers[id].push({
+                    number: activeCounter,
+                    lastTry: new Date(),
+                })
+            }
+            return activeCounter;
+            //res.end(String(activeCounter));
+            console.log(activeCounter)
+           //TUAKJ OSTAL
+        }
+    } else {
+        let picked = leftovers[0]
+        while (existingOutputs[id][picked.number]==true) {
+            picked.lastTry = new Date();
+            leftovers = getAvailableLeftovers()
+            if (leftovers.length == 0) {
+                return -2
+                //return res.redirect('/counter');
+            }
+            picked = leftovers[0]
+        }
+        picked.lastTry = new Date();
+        return picked.number;
+        console.log(picked.number);
+        //res.end(String(picked.number));
+        //console.log(picked.number)
+    }
+}
 
 app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res)=>{
     let {id} = req.params;
