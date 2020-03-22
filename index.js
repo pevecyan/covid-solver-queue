@@ -116,7 +116,7 @@ function getCounter(id){
         let picked = leftovers[0]
         while (existingOutputs[id][picked.number]==true) {
             picked.lastTry = new Date();
-            leftovers = getAvailableLeftovers()
+            leftovers = getAvailableLeftovers(id)
             if (leftovers.length == 0) {
                 return -2
                 //return res.redirect('/counter');
@@ -163,7 +163,7 @@ app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res)=>{
         let picked = leftovers[0]
         while (existingOutputs[id][picked.number]==true) {
             picked.lastTry = new Date();
-            leftovers = getAvailableLeftovers()
+            leftovers = getAvailableLeftovers(id)
             if (leftovers.length == 0) {
                 return res.redirect('/counter');
             }
