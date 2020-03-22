@@ -62,7 +62,7 @@ app.get('/target', (req, res)=>{
     
 });
 
-app.get('/counter', (req, res)=>{
+app.get('/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res)=>{
 
 
     let existsTarget = false;
