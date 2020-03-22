@@ -9,6 +9,26 @@ lerna-debug.log*
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
+mongo-data/
+
+./targets
+!./targets/.keep
+
+./uploads
+!./uploads/.keep
+
+./compounds
+!./compounds/.keep
+
+# MongoDB data
+./mongo-data
+!./mongo-data/.keep
+
+
+# IDEA
+*.iml
+.idea/
+
 # Runtime data
 pids
 *.pid
