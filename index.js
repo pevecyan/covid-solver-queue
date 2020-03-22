@@ -76,6 +76,7 @@ app.get('/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res)=>{
         break;
     }
     if (!existsTarget) return res.end(String(-1));
+    oldClientTarget = 1;
     let num = getCounter(oldClientTarget)
     if (num == -2) {
         res.redirect(`/${oldClientTarget}/counter`)
