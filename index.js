@@ -330,7 +330,14 @@ function isPackageSolved(counter, target) {
 function getAvailableLeftovers(targetID){
     let currentDate = new Date();
     let beforeDate = currentDate.setHours(currentDate.getHours() - 2);
-    return targetLeftovers[targetID].filter(a=> a.lastTry < beforeDate);
+    try{
+        return targetLeftovers[targetID].filter(a=> a.lastTry < beforeDate);
+    } catch(err){
+        console.log('AvailableLeftovers by target', targetID)
+        console.log(err)
+        return [];
+
+    }
 
 }
 
