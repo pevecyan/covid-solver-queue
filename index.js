@@ -93,22 +93,22 @@ function getCounter(id){
         } while(isPackageNotAvailable(activeCounters[id], id) || isPackageSolved(activeCounters[id], id))
 
         //Check if over top
-        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounter] == undefined)){
+        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounters[id]] == undefined)){
             console.log(-1)  
             return -1;     
         } else {
-            let l = isLeftover(activeCounter, id);
+            let l = isLeftover(activeCounters[id], id);
             if (!l.isAvailable) {
                 return -2
             }
             if (!l.isLeftover) {
                 targetLeftovers[id].push({
-                    number: activeCounter,
+                    number: activeCounters[id],
                     lastTry: new Date(),
                 })
             }
-            console.log(activeCounter)
-            return activeCounter;
+            console.log(activeCounters[id])
+            return activeCounters[id];
             //res.end(String(activeCounter));
            //TUAKJ OSTAL
         }
@@ -141,22 +141,22 @@ app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res)=>{
         } while(isPackageNotAvailable(activeCounters[id], id) || isPackageSolved(activeCounters[id], id))
 
         //Check if over top
-        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounter] == undefined)){
+        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounters[id]] == undefined)){
             res.end(String(-1));      
             console.log(-1)  
         } else {
-            let l = isLeftover(activeCounter, id);
+            let l = isLeftover(activeCounters[id], id);
             if (!l.isAvailable) {
                 return res.redirect('/counter');
             }
             if (!l.isLeftover) {
                 targetLeftovers[id].push({
-                    number: activeCounter,
+                    number: activeCounters[id],
                     lastTry: new Date(),
                 })
             }
-            res.end(String(activeCounter));
-            console.log(activeCounter)
+            res.end(String(activeCounters[id]));
+            console.log(activeCounters[id])
            //TUAKJ OSTAL
         }
     } else {
@@ -319,10 +319,11 @@ app.use("*", (req,res)=>{
 function isPackageNotAvailable(counter, target){
     if (Object.keys(existingInputs).length == 0 || counter >= maxCount) return false
     if (existingInputs[counter] != true ) return true 
+    return false;
 }
 
 function isPackageSolved(counter, target) {
-    if (existingOutputs[target][counter]) return true;
+    if (existingOutputs[target][counter] == true) return true;
     return false;
 }
 
