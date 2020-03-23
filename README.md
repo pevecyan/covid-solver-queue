@@ -62,6 +62,13 @@ Create missing directories
 mkdir -p {mongo-data,compounds,uploads,targets}
 ```
 
+Install dependencies
+```bash
+yarn install
+# or
+npm install
+```
+
 Boot-up index.js
 ```
 node index.js
