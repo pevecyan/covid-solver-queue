@@ -29,6 +29,8 @@ const client = new MongoClient(config.mongo);
 
 let db;
 
+const minCounter = 4000;
+
 client.connect(function (err) {
     if (err) console.error(err);
     console.log("Connected successfully to mongo");
@@ -222,12 +224,14 @@ app.get('/old', (req, res) => {
     res.end(String(oldClientTarget))
 });
 
+
 app.get('/health', (req, res) => res.end('ok'));
 
 app.use("*", (req, res) => {
     res.status(404);
     res.end();
 });
+
 
 const isPackageNotAvailable = (counter, _target) => {
     if (Object.keys(existingInputs).length === 0 || counter >= maxCount) return false;
@@ -354,7 +358,7 @@ function handleExistingOutputs(targetID) {
 
     for (let i = 1; i < max; i++) {
         if (!map[i]) {
-            if (existingInputs[i]) {
+            if (existingInputs[i] && i < minCounter) {
                 let old = oldLeftovers.find(a => a.number === i);
                 if (old) {
                     targetLeftovers[targetID].push(old);
@@ -367,5 +371,5 @@ function handleExistingOutputs(targetID) {
             }
         }
     }
-    activeCounters[targetID] = max;
+    activeCounters[targetID] = Math.max(max, minCounter);
 }
