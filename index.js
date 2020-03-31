@@ -49,7 +49,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    if (req.method === 'POST' && req.body.apikey !== config.apiKey) {
+    if (req.method === 'POST' && !req.path.match(/\/[0-9]+\/file\/[0-9]+/) && req.body.apikey !== config.apiKey) {
         res.status(401);
         res.end();
         return;
