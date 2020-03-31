@@ -48,7 +48,15 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get('/target', (req, res) => {
+app.use((req, res, next) => {
+    if (req.method === 'POST' && req.body.apikey !== config.apiKey) {
+        res.status(401);
+        res.end();
+    }
+    next();
+})
+
+app.post('/target', (req, res) => {
     for (var i = 0; i < availableTargets.length; i++) {
         let leftovers = getAvailableLeftovers(availableTargets[i]);
         if (leftovers.length === 0 && activeCounters[availableTargets[i]] >= maxCount) {
@@ -63,75 +71,7 @@ app.get('/target', (req, res) => {
 
 });
 
-app.get('/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
-    let existsTarget = false;
-    for (var i = 0; i < availableTargets.length; i++) {
-        let leftovers = getAvailableLeftovers(availableTargets[i]);
-        if (leftovers.length === 0 && activeCounters[availableTargets[i]] >= maxCount) {
-            continue;
-        }
-        existsTarget = true;
-        oldClientTarget = availableTargets[i];
-        break;
-    }
-    if (!existsTarget) return res.end(String(-1));
-    oldClientTarget = 1;
-    let num = getCounter(oldClientTarget);
-    if (num === -2) {
-        res.redirect(`/${oldClientTarget}/counter`)
-    } else {
-        res.end(String(num))
-    }
-});
-
-function getCounter(id) {
-    let leftovers = getAvailableLeftovers(id);
-    if (leftovers.length === 0) {
-        //increase counter until we found nuber that it has a test
-        do {
-            activeCounters[id]++;
-        } while (isPackageNotAvailable(activeCounters[id], id) || isPackageSolved(activeCounters[id], id))
-
-        //Check if over top
-        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounters[id]] == undefined)) {
-            console.log(-1);
-            return -1;
-        } else {
-            let l = isLeftover(activeCounters[id], id);
-            if (!l.isAvailable) {
-                return -2
-            }
-            if (!l.isLeftover) {
-                targetLeftovers[id].push({
-                    number: activeCounters[id],
-                    lastTry: new Date(),
-                })
-            }
-            console.log(activeCounters[id]);
-            return activeCounters[id];
-            //res.end(String(activeCounter));
-            //TUAKJ OSTAL
-        }
-    } else {
-        let picked = leftovers[0];
-        while (existingOutputs[id][picked.number] === true) {
-            picked.lastTry = new Date();
-            leftovers = getAvailableLeftovers(id);
-            if (leftovers.length === 0) {
-                return -2
-                //return res.redirect('/counter');
-            }
-            picked = leftovers[0]
-        }
-        picked.lastTry = new Date();
-        console.log(picked.number);
-        return picked.number;
-        //res.end(String(picked.number));
-        //console.log(picked.number)
-    }
-}
-
-app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
+app.post('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
     let {id} = req.params;
     let leftovers = getAvailableLeftovers(id);
     if (leftovers.length === 0) {
@@ -172,12 +112,7 @@ app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => 
     }
 });
 
-app.get('/file/down/:counter', (req, res) => {
-    let {counter} = req.params;
-    res.redirect(`/${oldClientTarget}/file/down/${counter}`)
-});
-
-app.get('/:id/file/down/:counter', (req, res) => {
+app.post('/:id/file/down/:counter', (req, res) => {
     let {counter} = req.params;
     try {
         res.download(`${config.path}/compounds/3D_structures_${counter}.sdf`)
@@ -188,37 +123,7 @@ app.get('/:id/file/down/:counter', (req, res) => {
     }
 });
 
-app.get('/file/target/test_pro', (req, res) => {
-    res.redirect(`/${oldClientTarget}/file/target/test_pro`)
-});
-
-app.get('/:id/file/target/test_pro', (req, res) => {
-    let {id} = req.params;
-    try {
-        res.download(`${config.path}/targets/${id}/targets/TEST_PRO.pdb`)
-    } catch (err) {
-        console.error("Error downloading file, ", err);
-        res.status(402);
-        res.end()
-    }
-});
-
-app.get('/file/target/test_ref', (req, res) => {
-    res.redirect(`/${oldClientTarget}/file/target/test_ref`)
-});
-
-app.get('/:id/file/target/test_ref', (req, res) => {
-    let {id} = req.params;
-    try {
-        res.download(`${config.path}/targets/${id}/targets/TEST_REF.sdf`)
-    } catch (err) {
-        console.error("Error downloading file, ", err);
-        res.status(402);
-        res.end()
-    }
-});
-
-app.get('/:id/file/target/archive', (req, res) => {
+app.post('/:id/file/target/archive', (req, res) => {
     let {id} = req.params;
     try {
         res.download(`${config.path}/targets/${id}/targets/archive.zip`)
