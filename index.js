@@ -4,7 +4,8 @@ const express = require('express'),
     queue = require('express-queue'),
     fs = require('fs'),
     multer = require('multer'),
-    MongoClient = require('mongodb').MongoClient;
+    MongoClient = require('mongodb').MongoClient,
+    zipper = require("zip-local");
 var upload = multer({dest: 'uploads/'});
 const config = require('./config.json');
 const app = express();
@@ -19,7 +20,6 @@ let targetLeftovers = {};
 
 let oldClientTarget = 0;
 
-let activeCounter = 0;
 let maxCount = 0;
 let existingInputs = {};
 let existingOutputs = {};
@@ -30,6 +30,7 @@ const client = new MongoClient(config.mongo);
 let db;
 
 client.connect(function (err) {
+    if (err) console.error(err);
     console.log("Connected successfully to mongo");
     db = client.db(dbName);
 });
@@ -140,7 +141,7 @@ app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => 
         } while (isPackageNotAvailable(activeCounters[id], id) || isPackageSolved(activeCounters[id], id))
 
         //Check if over top
-        if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounters[id]] == undefined)) {
+        if (activeCounters[id] > maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounters[id]] == undefined)) {
             res.end(String(-1));
             console.log(-1)
         } else {
@@ -177,7 +178,7 @@ app.get('/file/down/:counter', (req, res) => {
 });
 
 app.get('/:id/file/down/:counter', (req, res) => {
-    let {counter, id} = req.params;
+    let {counter} = req.params;
     try {
         res.download(`${config.path}/compounds/3D_structures_${counter}.sdf`)
     } catch (err) {
@@ -214,6 +215,17 @@ app.get('/:id/file/target/test_ref', (req, res) => {
         console.error("Error downloading file, ", err);
         res.status(402);
         res.end()
+    }
+});
+
+app.get('/:id/file/target/archive', (req, res) => {
+    let {id} = req.params;
+    try {
+        res.download(`${config.path}/targets/${id}/targets/archive.zip`)
+    } catch (err) {
+        console.error("Error downloading file, ", err);
+        res.status(402);
+        res.end();
     }
 });
 
@@ -392,7 +404,25 @@ function handleExistingFiles() {
     })
 
 
-    //Get max counts for each file
+    //Zip all target data
+    targets.forEach(t => {
+
+        let files = fs.readdirSync(`${config.path}/targets/${t}/targets`);
+        files = files.filter(f=> f.match(/.+\.zip/));
+
+        files.forEach(f=>{
+            fs.unlinkSync(`${config.path}/targets/${t}/targets/${f}`)
+        })
+        //zipping a directory to disk with compression
+        //the directory has the following structure
+        //|-- hello-world.txt
+        //|-- cpp
+        //|-- hello-world.cpp
+        //|-- java
+        //|--hello-world.java
+        zipper.sync.zip(`${config.path}/targets/${t}/targets/`).compress()
+            .save(`${config.path}/targets/${t}/targets/archive.zip`);
+    });
 }
 
 function handleExistingOutputs(targetID) {
