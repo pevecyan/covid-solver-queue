@@ -39,7 +39,7 @@ setInterval(() => {
 }, 1000 * 60 * 125);
 
 app.use((req, res, next) => {
-    var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     if (db) {
         let history = db.collection('history');
         history.insertOne({ip, path: req.path, method: req.method, timestamp: new Date()});
@@ -50,7 +50,7 @@ app.use((req, res, next) => {
 app.get('/target', (req, res) => {
     for (var i = 0; i < availableTargets.length; i++) {
         let leftovers = getAvailableLeftovers(availableTargets[i]);
-        if (leftovers.length == 0 && activeCounters[availableTargets[i]] >= maxCount) {
+        if (leftovers.length === 0 && activeCounters[availableTargets[i]] >= maxCount) {
             continue;
         }
         return res.end(String(availableTargets[i]));
@@ -66,7 +66,7 @@ app.get('/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
     let existsTarget = false;
     for (var i = 0; i < availableTargets.length; i++) {
         let leftovers = getAvailableLeftovers(availableTargets[i]);
-        if (leftovers.length == 0 && activeCounters[availableTargets[i]] >= maxCount) {
+        if (leftovers.length === 0 && activeCounters[availableTargets[i]] >= maxCount) {
             continue;
         }
         existsTarget = true;
@@ -75,17 +75,17 @@ app.get('/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
     }
     if (!existsTarget) return res.end(String(-1));
     oldClientTarget = 1;
-    let num = getCounter(oldClientTarget)
-    if (num == -2) {
+    let num = getCounter(oldClientTarget);
+    if (num === -2) {
         res.redirect(`/${oldClientTarget}/counter`)
     } else {
         res.end(String(num))
     }
-})
+});
 
 function getCounter(id) {
-    let leftovers = getAvailableLeftovers(id)
-    if (leftovers.length == 0) {
+    let leftovers = getAvailableLeftovers(id);
+    if (leftovers.length === 0) {
         //increase counter until we found nuber that it has a test
         do {
             activeCounters[id]++;
@@ -93,7 +93,7 @@ function getCounter(id) {
 
         //Check if over top
         if (activeCounters[id] >= maxCount || (Object.keys(existingInputs).length > 0 && existingInputs[activeCounters[id]] == undefined)) {
-            console.log(-1)
+            console.log(-1);
             return -1;
         } else {
             let l = isLeftover(activeCounters[id], id);
@@ -106,17 +106,17 @@ function getCounter(id) {
                     lastTry: new Date(),
                 })
             }
-            console.log(activeCounters[id])
+            console.log(activeCounters[id]);
             return activeCounters[id];
             //res.end(String(activeCounter));
             //TUAKJ OSTAL
         }
     } else {
-        let picked = leftovers[0]
-        while (existingOutputs[id][picked.number] == true) {
+        let picked = leftovers[0];
+        while (existingOutputs[id][picked.number] === true) {
             picked.lastTry = new Date();
-            leftovers = getAvailableLeftovers(id)
-            if (leftovers.length == 0) {
+            leftovers = getAvailableLeftovers(id);
+            if (leftovers.length === 0) {
                 return -2
                 //return res.redirect('/counter');
             }
@@ -132,8 +132,8 @@ function getCounter(id) {
 
 app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
     let {id} = req.params;
-    let leftovers = getAvailableLeftovers(id)
-    if (leftovers.length == 0) {
+    let leftovers = getAvailableLeftovers(id);
+    if (leftovers.length === 0) {
         //increase counter until we found nuber that it has a test
         do {
             activeCounters[id]++;
@@ -161,10 +161,8 @@ app.get('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => 
         let picked = leftovers[0];
         while (existingOutputs[id][picked.number] === true) {
             picked.lastTry = new Date();
-            leftovers = getAvailableLeftovers(id)
-            if (leftovers.length === 0) {
-                return res.redirect('/counter');
-            }
+            leftovers = getAvailableLeftovers(id);
+            if (leftovers.length === 0) return res.redirect('/counter');
             picked = leftovers[0]
         }
         picked.lastTry = new Date();
@@ -238,7 +236,7 @@ app.post('/file/:counter', upload.single("data"), (req, res) => {
 });
 
 app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
-    if (req.body.apikey != config.apiKey) {
+    if (req.body.apikey !== config.apiKey) {
         res.status(401);
         res.end();
         return
@@ -249,81 +247,77 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
         existingOutputs[id][counter] = true;
         res.end();
     } catch (err) {
-        console.error('Error moving file', err)
+        console.error('Error moving file', err);
         res.status(401);
         res.end();
     }
 });
 
 app.get('/current', (req, res) => {
-    let out = ""
+    let out = "";
     availableTargets.forEach(t => {
         out += `${t}: ${activeCounters[t]}\n`
-    })
+    });
     res.end(out)
-})
+});
 
 app.get('/latest', (req, res) => {
     res.download(__dirname + '/run_flexx.latest.exe');
-})
+});
 
 app.get('/latest-version', (req, res) => {
     let version = fs.readFileSync(__dirname + '/version.latest', 'utf8');
     res.end(version);
-})
+});
 
 app.get('/reset', (req, res) => {
-    handleExistingFiles()
+    handleExistingFiles();
     res.end();
-})
+});
 
 app.get('/max', (req, res) => {
     res.end(String(maxCount));
-})
+});
+
 app.get('/leftovers', (req, res) => {
     let out = "";
 
     availableTargets.forEach(t => {
         out += `${t}: ${JSON.stringify(getAvailableLeftovers(t).map(a => a.number))}\n`
-    })
+    });
     res.end(out);
-})
+});
 
 app.get('/leftovers-all', (req, res) => {
-    let out = ""
+    let out = "";
     availableTargets.forEach(t => {
         out += `${t}: ${JSON.stringify(targetLeftovers[t])}\n`
-    })
+    });
     res.end(out);
-})
+});
 
 app.get('/inputs', (req, res) => {
     res.end(JSON.stringify(existingInputs));
-})
+});
 
 app.get('/old', (req, res) => {
     res.end(String(oldClientTarget))
-})
-
-app.get('/health', (req, res) => {
-    res.end('ok');
 });
 
+app.get('/health', (req, res) => res.end('ok'));
+
 app.use("*", (req, res) => {
-    res.status(404)
+    res.status(404);
     res.end();
-})
+});
 
-function isPackageNotAvailable(counter, _target) {
+const isPackageNotAvailable = (counter, _target) => {
     if (Object.keys(existingInputs).length === 0 || counter >= maxCount) return false;
-    if (existingInputs[counter] !== true) return true;
-    return false;
-}
+    return existingInputs[counter] !== true;
+};
 
-function isPackageSolved(counter, target) {
-    if (existingOutputs[target][counter] == true) return true;
-    return false;
-}
+const isPackageSolved = (counter, target) =>
+    existingOutputs[target][counter] === true;
 
 function getAvailableLeftovers(targetID) {
     let currentDate = new Date();
@@ -339,7 +333,7 @@ function getAvailableLeftovers(targetID) {
 }
 
 function isLeftover(number, target) {
-    let l = targetLeftovers[target].find(a => a.number == number);
+    let l = targetLeftovers[target].find(a => a.number === number);
     let currentDate = new Date();
     if (l) {
         if (l.lastTry < currentDate) {
@@ -379,7 +373,8 @@ function handleExistingFiles() {
     if (!existing) {
         return;
     }
-    let filteredExisting = existing.filter(a => a.match(/3D_structures_/)).map(a => parseInt(a.split('.')[0].replace('3D_structures_', '')));
+    let filteredExisting = existing.filter(a => a.match(/3D_structures_/))
+        .map(a => parseInt(a.split('.')[0].replace('3D_structures_', '')));
 
     let max = 0;
     filteredExisting.forEach(e => {
@@ -387,7 +382,8 @@ function handleExistingFiles() {
         if (e > max) {
             max = e;
         }
-    })
+    });
+
     maxCount = max;
 
     //Get existing output files for each target
@@ -405,25 +401,25 @@ function handleExistingOutputs(targetID) {
     let outputFiles = fs.readdirSync(`${config.path}/targets/${targetID}/up`);
     if (!outputFiles) return;
 
-    let filtered = outputFiles.filter(a => a.match(/OUT_/)).map(a => parseInt(a.split('.')[0].replace('OUT_', '')));
+    let filtered = outputFiles.filter(a => a.match(/OUT_/))
+        .map(a => parseInt(a.split('.')[0].replace('OUT_', '')));
     let max = 0;
     let map = {};
     filtered.forEach(a => {
-        if (a > max) {
-            max = a;
-        }
+        if (a > max) max = a;
         map[a] = true;
         existingOutputs[targetID][a] = true;
-    })
+    });
     let currentDate = new Date();
     let beforeDate = currentDate.setHours(currentDate.getHours() - 2);
     let oldLeftovers = targetLeftovers[targetID];
     if (!oldLeftovers) oldLeftovers = [];
     targetLeftovers[targetID] = [];
-    for (var i = 1; i < max; i++) {
+
+    for (let i = 1; i < max; i++) {
         if (!map[i]) {
             if (existingInputs[i]) {
-                let old = oldLeftovers.find(a => a.number == i);
+                let old = oldLeftovers.find(a => a.number === i);
                 if (old) {
                     targetLeftovers[targetID].push(old);
                 } else {
