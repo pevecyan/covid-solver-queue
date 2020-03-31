@@ -358,7 +358,7 @@ function handleExistingOutputs(targetID) {
 
     for (let i = 1; i < max; i++) {
         if (!map[i]) {
-            if (existingInputs[i] && i < minCounter) {
+            if (existingInputs[i] && i > minCounter) {
                 let old = oldLeftovers.find(a => a.number === i);
                 if (old) {
                     targetLeftovers[targetID].push(old);
