@@ -284,7 +284,9 @@ function handleExistingFiles() {
     targets.forEach(t => {
         let target = parseInt(t);
         if (!isNaN(target)) {
-            availableTargets.push(target);
+            if (availableTargets.indexOf(target) == -1) {
+                availableTargets.push(target);
+            }
         }
     });
     oldClientTarget = availableTargets[0];
