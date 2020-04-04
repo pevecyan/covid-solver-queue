@@ -29,7 +29,7 @@ const client = new MongoClient(config.mongo);
 
 let db;
 
-const minCounter = 4000;
+const minCounter = 1300;
 
 client.connect(function (err) {
     if (err) console.error(err);
