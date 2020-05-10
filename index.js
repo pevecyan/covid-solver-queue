@@ -32,10 +32,18 @@ let db;
 const minCounter = 1300;
 
 client.connect(function (err) {
+    startServer();
     if (err) return console.error(err);
     console.log("Connected successfully to mongo");
     db = client.db(dbName);
 });
+
+function startServer() {
+
+    app.listen(8888, () => {
+        console.log('Server started listening on port 8888')
+    });
+}
 
 setInterval(() => {
     handleExistingFiles()
@@ -269,9 +277,10 @@ function isLeftover(number, target) {
 }
 
 
-app.listen(8888, () => {
-    console.log('Server started listening on port 8888')
-});
+//app.listen(8888, () => {
+//console.log('Server started listening on port 8888')
+//});
+
 handleExistingFiles();
 
 function handleExistingFiles() {
