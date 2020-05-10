@@ -32,7 +32,7 @@ let db;
 const minCounter = 1300;
 
 client.connect(function (err) {
-    if (err) console.error(err);
+    if (err) return console.error(err);
     console.log("Connected successfully to mongo");
     db = client.db(dbName);
 });
