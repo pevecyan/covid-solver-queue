@@ -25,7 +25,7 @@ let existingInputs = {};
 let existingOutputs = {};
 
 const dbName = 'covid';
-const client = new MongoClient(config.mongo);
+const client = new MongoClient(config.mongo, {useUnifiedTopology: true});
 
 let db;
 
