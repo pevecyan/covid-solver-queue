@@ -40,7 +40,8 @@ client.connect(function (err) {
 });
 
 function startServer() {
-
+    handleExistingFiles();
+    console.log('Existing files handled');
     app.listen(8888, () => {
         console.log('Server started listening on port 8888')
     });
@@ -295,7 +296,7 @@ function isLeftover(number, target) {
 
 deleteFolderRecursive('uploads')
 fs.mkdirSync('uploads')
-handleExistingFiles();
+//handleExistingFiles();
 
 
 function deleteFolderRecursive(path) {
