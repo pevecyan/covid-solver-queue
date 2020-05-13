@@ -57,7 +57,14 @@ app.use((req, res, next) => {
     let {ClientGUID, ThreadCount} = req.body;
     if (db) {
         let history = db.collection('history');
-        history.insertOne({ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount});
+        let data = {ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount};
+        if (ClientGUID) {
+            data.ClientGUID = ClientGUID;
+        }
+        if (ThreadCount) {
+            data.ThreadCount = ThreadCount;
+        }
+        history.insertOne(data);
     }
     next();
 });
