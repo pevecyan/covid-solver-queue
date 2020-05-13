@@ -55,6 +55,7 @@ setInterval(() => {
 app.use((req, res, next) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     let {ClientGUID, ThreadCount} = req.body;
+    console.log(req.body);
     if (db) {
         let history = db.collection('history');
         let data = {ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount};
