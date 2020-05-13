@@ -40,6 +40,7 @@ client.connect(function (err) {
 });
 
 function startServer() {
+    console.log('Started existing files handle');
     handleExistingFiles();
     console.log('Existing files handled');
     app.listen(8888, () => {
