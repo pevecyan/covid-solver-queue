@@ -5,6 +5,7 @@ const express = require('express'),
     fs = require('fs'),
     multer = require('multer'),
     MongoClient = require('mongodb').MongoClient,
+    Path = require('path'),
     zipper = require("zip-local");
 var upload = multer({dest: 'uploads/'});
 const config = require('./config.json');
@@ -296,7 +297,6 @@ deleteFolderRecursive('uploads')
 fs.mkdirSync('uploads')
 handleExistingFiles();
 
-const Path = require('path');
 
 function deleteFolderRecursive(path) {
     if (fs.existsSync(path)) {
