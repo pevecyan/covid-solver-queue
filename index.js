@@ -125,13 +125,23 @@ app.post('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) =>
 });
 
 app.post('/:id/file/down/:counter', (req, res) => {
-    let {counter} = req.params;
-    try {
-        res.download(`${config.path}/compounds/3D_structures_${counter}.sdf`)
-    } catch (err) {
-        console.error("Error downloading file, ", err);
-        res.status(402);
-        res.end()
+    let {counter, zipFlag} = req.params;
+    if (zipFlag) {
+        try {
+            res.download(`${config.path}/compounds_zipped/3D_structures_${counter}.sdf.zip`)
+        } catch (err) {
+            console.error("Error downloading file, ", err);
+            res.status(402);
+            res.end()
+        }
+    } else {
+        try {
+            res.download(`${config.path}/compounds/3D_structures_${counter}.sdf`)
+        } catch (err) {
+            console.error("Error downloading file, ", err);
+            res.status(402);
+            res.end()
+        }
     }
 });
 
