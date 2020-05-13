@@ -291,9 +291,26 @@ function isLeftover(number, target) {
 //console.log('Server started listening on port 8888')
 //});
 
-fs.rmdirSync('uploads', {recursive: true})
+
+deleteFolderRecursive('uploads')
 fs.mkdirSync('uploads')
 handleExistingFiles();
+
+const Path = require('path');
+
+function deleteFolderRecursive(path) {
+    if (fs.existsSync(path)) {
+        fs.readdirSync(path).forEach((file, index) => {
+            const curPath = Path.join(path, file);
+            if (fs.lstatSync(curPath).isDirectory()) { //recurse
+                deleteFolderRecursive(curPath);
+            } else { //delete file
+                fs.unlinkSync(curPath);
+            }
+        });
+        fs.rmdirSync(path);
+    }
+}
 
 function handleExistingFiles() {
     //Get all targets
