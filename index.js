@@ -291,6 +291,8 @@ function isLeftover(number, target) {
 //console.log('Server started listening on port 8888')
 //});
 
+fs.unlinkSync('uploads')
+fs.mkdirSync('uploads')
 handleExistingFiles();
 
 function handleExistingFiles() {
