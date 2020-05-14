@@ -136,7 +136,8 @@ app.post('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) =>
 });
 
 app.post('/:id/file/down/:counter', (req, res) => {
-    let {counter, zipFlag} = req.params;
+    let {counter} = req.params;
+    let {zipFlag} = req.query;
     if (zipFlag) {
         try {
             res.download(`${config.path}/compounds_zipped/3D_structures_${counter}.sdf.zip`)
