@@ -35,8 +35,8 @@ let uploadPenalty = {}
 
 const minCounter = 1300;
 
-startServer();
 client.connect(function (err) {
+    startServer();
     if (err) return console.error(err);
     console.log("Connected successfully to mongo");
     db = client.db(dbName);
