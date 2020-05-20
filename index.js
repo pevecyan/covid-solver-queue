@@ -204,6 +204,8 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
             }
             if (zipFlag) {
                 fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf.zip`)
+            } else {
+                fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf`)
             }
             existingOutputs[id][counter] = true;
         
