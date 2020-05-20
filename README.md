@@ -1,24 +1,28 @@
 # covid-solver-queue
-## api handlers (old)
-- GET /target
+## API handlers
+**Every POST request checks for API key**
+Pass API key with `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/<handler>`
+
+- POST /target
   Returns target to wich should be all the following requests sent
+  `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/target`
   
-- GET /:target//counter 
+- POST /:target/counter 
   Returns current package number that should be calculated. First we empty the leftover list (filled every two hours with lookup to the ftp server), after all of those are taken, we continue on incrementing active counter.
+  `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/1/counter`
   
+- POST /:target/file/down/:counter 
+  Returns actual package with number passed as argument
+  `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/1/file/down/16`
 
+- POST /:target/file/target/archive
+  Returns :target/targets/archive.zip which is downloaded from ftp only once and after that we use cached version.
+  `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/`
   
-- GET /:target/file/down/:counter 
-  Returns actual package with number passed as argument (/file/down/16)
-
-- GET /:target//file/target/test_pro
-  Returns TARGETS/TEST_PRO.pdb which is downloaded from ftp only once and after that we use cached version.
-  
-- GET /:target//file/target/test_ref
-  Returns TARGETS/TEST_REF.sdf which is downloaded from ftp only once and after that we use cached version.
-  
-- POST /:target//file/:counter
-  Uploads calcualted file to the ftp server. (upload with curl -F "data=@OUT_16.sdf" http://server.domain.com/file/16 )
+- POST /:target/file/:counter
+  Uploads calcualted file to the ftp server.
+  Can also handle statistical data
+  `curl -X POST -F "data=@OUT_16.sdf" -F "apikey=\<apikey>" -F "Client=covid-solver-unix" -F "ClientGUID=\<random GUID>" -F "ThreadCount=3" https://server.domain.com/1/file/16`
   
 - GET /current
   Returns current active counter
