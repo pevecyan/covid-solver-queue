@@ -385,22 +385,24 @@ function handleExistingFiles() {
 
     //Zip all target data
     targets.forEach(t => {
+        let target = parseInt(t);
+        if (!isNaN(target)) {
+            let files = fs.readdirSync(`${config.path}/targets/${t}/targets`);
+            files = files.filter(f=> f.match(/.+\.zip/));
 
-        let files = fs.readdirSync(`${config.path}/targets/${t}/targets`);
-        files = files.filter(f=> f.match(/.+\.zip/));
-
-        files.forEach(f=>{
-            fs.unlinkSync(`${config.path}/targets/${t}/targets/${f}`)
-        })
-        //zipping a directory to disk with compression
-        //the directory has the following structure
-        //|-- hello-world.txt
-        //|-- cpp
-        //|-- hello-world.cpp
-        //|-- java
-        //|--hello-world.java
-        zipper.sync.zip(`${config.path}/targets/${t}/targets/`).compress()
-            .save(`${config.path}/targets/${t}/targets/archive.zip`);
+            files.forEach(f=>{
+                fs.unlinkSync(`${config.path}/targets/${t}/targets/${f}`)
+            })
+            //zipping a directory to disk with compression
+            //the directory has the following structure
+            //|-- hello-world.txt
+            //|-- cpp
+            //|-- hello-world.cpp
+            //|-- java
+            //|--hello-world.java
+            zipper.sync.zip(`${config.path}/targets/${t}/targets/`).compress()
+                .save(`${config.path}/targets/${t}/targets/archive.zip`);
+        }
     });
 }
 
