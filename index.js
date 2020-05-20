@@ -30,10 +30,13 @@ const client = new MongoClient(config.mongo, {useUnifiedTopology: true});
 
 let db;
 
+let uploadBlacklist = {}
+let uploadPenalty = {}
+
 const minCounter = 1300;
 
+startServer();
 client.connect(function (err) {
-    startServer();
     if (err) return console.error(err);
     console.log("Connected successfully to mongo");
     db = client.db(dbName);
@@ -54,8 +57,15 @@ setInterval(() => {
 
 app.use((req, res, next) => {
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    req.requestIP = ip;
     let {ClientGUID, ThreadCount} = req.body;
+    if (uploadBlacklist[ip]) {
+        res.status(403);
+        res.end();
+        return;
+    }
     console.log(req.body);
+
     if (db) {
         let history = db.collection('history');
         let data = {ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount};
@@ -88,10 +98,6 @@ app.post('/target', (req, res) => {
         return res.end(String(availableTargets[i]));
     }
     res.end(String(-1));
-    setTimeout(()=>{
-        process.exit()//This will reset leftovers
-    })
-
 });
 
 app.post('/:id/counter', queue({activeLimit: 1, queuedLimit: -1}), (req, res) => {
@@ -168,17 +174,41 @@ app.post('/:id/file/target/archive', (req, res) => {
     }
 });
 
-app.post('/file/:counter', upload.single("data"), (req, res) => {
+app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
     if (req.body.apikey !== config.apiKey) {
         res.status(401);
         res.end();
         return
     }
-    let {counter} = req.params;
+    let {zipFlag} = req.query;
+    let {id, counter} = req.params;
     try {
-        fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${oldClientTarget}/up/OUT_${counter}.sdf`)
+        let file = fs.statSync(__dirname + `/uploads/${req.file.filename}`);
+        if (file.size == 0) {
+            fs.unlinkSync(__dirname + `/uploads/${req.file.filename}`)
+            
+            if (uploadPenalty[req.requestIP]) {
+                uploadPenalty[req.requestIP]++;
+                if (uploadPenalty[req.requestIP] > 4) {
+                    uploadBlacklist[req.requestIP] = setTimeout(()=>{
+                        delete uploadBlacklist[req.requestIP];
+                        delete uploadPenalty[req.requestIP];
+                    }, 1000 * 60 * 10)
+                }
+            } else {
+                uploadPenalty[req.requestIP] = 1;
+            }
+        } else {
+            if (uploadPenalty[req.requestIP]) {
+                delete uploadPenalty[req.requestIP]
+            }
+            if (zipFlag) {
+                fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf.zip`)
+            }
+            existingOutputs[id][counter] = true;
+        
+        }
         res.end();
-        existingOutputs[oldClientTarget][counter] = true;
     } catch (err) {
         console.error('Error moving file', err);
         res.status(401);
@@ -186,23 +216,9 @@ app.post('/file/:counter', upload.single("data"), (req, res) => {
     }
 });
 
-app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
-    if (req.body.apikey !== config.apiKey) {
-        res.status(401);
-        res.end();
-        return
-    }
-    let {id, counter} = req.params;
-    try {
-        fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf`)
-        existingOutputs[id][counter] = true;
-        res.end();
-    } catch (err) {
-        console.error('Error moving file', err);
-        res.status(401);
-        res.end();
-    }
-});
+app.get('/blacklist', (req, res)=>{
+    res.end(JSON.stringify(Object.keys(uploadBlacklist)));
+})
 
 app.get('/current', (req, res) => {
     let out = "";
@@ -254,7 +270,6 @@ app.get('/inputs', (req, res) => {
 app.get('/old', (req, res) => {
     res.end(String(oldClientTarget))
 });
-
 
 app.get('/health', (req, res) => res.end('ok'));
 
