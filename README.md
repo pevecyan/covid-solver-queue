@@ -8,7 +8,7 @@ Pass API key with `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/target`
   
 - POST /:target/counter 
-  Returns current package number that should be calculated. First we empty the leftover list (filled every two hours with lookup to the ftp server), after all of those are taken, we continue on incrementing active counter.
+  Returns current package number that should be calculated. First we empty the leftover list (filled every two hours with lookup to the specified directory), after all of those are taken, we continue on incrementing active counter.
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/1/counter`
   
 - POST /:target/file/down/:counter 
@@ -16,7 +16,7 @@ Pass API key with `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/1/file/down/16`
 
 - POST /:target/file/target/archive
-  Returns :target/targets/archive.zip which is downloaded from ftp only once and after that we use cached version.
+  Returns :target/targets/archive.zip
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/`
   
 - POST /:target/file/:counter
