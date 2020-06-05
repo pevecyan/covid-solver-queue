@@ -1,36 +1,35 @@
 # covid-solver-queue
 ## API handlers
-**Every POST request checks for API key**
+**Every POST request checks for API key and can handle statistical data**  
 Pass API key with `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/<handler>`
 
-- POST /target
-  Returns target to wich should be all the following requests sent
+- **POST /target**  
+  Returns target to wich should be all the following requests sent  
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/target`
   
-- POST /:target/counter 
-  Returns current package number that should be calculated. First we empty the leftover list (filled every two hours with lookup to the specified directory), after all of those are taken, we continue on incrementing active counter.
+- **POST /:target/counter**  
+  Returns current package number that should be calculated. First we empty the leftover list (filled every two hours with lookup to the specified directory), after all of those are taken, we continue on incrementing active counter.  
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/1/counter`
   
-- POST /:target/file/down/:counter 
-  Returns actual package with number passed as argument
+- **POST /:target/file/down/:counter**  
+  Returns actual package with number passed as argument  
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/1/file/down/16`
 
-- POST /:target/file/target/archive
-  Returns :target/targets/archive.zip
+- **POST /:target/file/target/archive**  
+  Returns :target/targets/archive.zip  
   `curl -X POST -d "apikey=\<apikey>" https://server.domain.com/`
   
-- POST /:target/file/:counter
-  Uploads calcualted file to the ftp server.
-  Can also handle statistical data
+- **POST /:target/file/:counter**  
+  Uploads calcualted file to the server.  
   `curl -X POST -F "data=@OUT_16.sdf" -F "apikey=\<apikey>" -F "Client=covid-solver-unix" -F "ClientGUID=\<random GUID>" -F "ThreadCount=3" https://server.domain.com/1/file/16`
   
-- GET /current
+- **GET /current**  
   Returns current active counter
   
-- GET /leftovers
+- **GET /leftovers**  
   Returns leftovers
   
-- GET /health
+- **GET /health**  
   Returns "ok" if server is alive and kicking
 
 
