@@ -9,6 +9,7 @@ const express = require('express'),
     zipper = require("zip-local");
 var upload = multer({dest: 'uploads/'});
 const config = require('./config.json');
+const dockingConfig = require('./dockingConfig.json');
 const app = express();
 
 app.use(express.urlencoded({extended: true}));
@@ -341,23 +342,9 @@ function deleteFolderRecursive(path) {
 }
 
 function handleExistingFiles() {
+    console.log(dockingConfig)
     //Get all targets
-    let targets = fs.readdirSync(`${config.path}/targets`);
-    if (!targets) {
-        console.error("Error reading targets");
-        return;
-    }
-    targets = targets.filter(a => a !== "sets");
-    targets.forEach(t => {
-        let target = parseInt(t);
-        if (!isNaN(target)) {
-            if (availableTargets.indexOf(target) == -1) {
-                availableTargets.push(target);
-            }
-        }
-    });
-    oldClientTarget = availableTargets[0];
-
+    availableTargets = dockingConfig.targets;
 
     //Get existing input files 
     let existing = fs.readdirSync(`${config.path}/compounds`);
@@ -374,8 +361,8 @@ function handleExistingFiles() {
             max = e;
         }
     });
-
     maxCount = max;
+
 
     //Get existing output files for each target
     availableTargets.forEach(t => {
@@ -384,14 +371,14 @@ function handleExistingFiles() {
 
 
     //Zip all target data
-    targets.forEach(t => {
-        let target = parseInt(t);
+    availableTargets.forEach(t => {
+        let target = t.id;
         if (!isNaN(target)) {
-            let files = fs.readdirSync(`${config.path}/targets/${t}/targets`);
+            let files = fs.readdirSync(`${config.path}/targets/${target}/targets`);
             files = files.filter(f=> f.match(/.+\.zip/));
 
             files.forEach(f=>{
-                fs.unlinkSync(`${config.path}/targets/${t}/targets/${f}`)
+                fs.unlinkSync(`${config.path}/targets/${target}/targets/${f}`)
             })
             //zipping a directory to disk with compression
             //the directory has the following structure
@@ -400,13 +387,14 @@ function handleExistingFiles() {
             //|-- hello-world.cpp
             //|-- java
             //|--hello-world.java
-            zipper.sync.zip(`${config.path}/targets/${t}/targets/`).compress()
-                .save(`${config.path}/targets/${t}/targets/archive.zip`);
+            zipper.sync.zip(`${config.path}/targets/${target}/targets/`).compress()
+                .save(`${config.path}/targets/${target}/targets/archive.zip`);
         }
     });
 }
 
-function handleExistingOutputs(targetID) {
+function handleExistingOutputs(target) {
+    let targetID = target.id;
     activeCounters[targetID] = 0;
     existingOutputs[targetID] = {};
     let outputFiles = fs.readdirSync(`${config.path}/targets/${targetID}/up`);
@@ -429,17 +417,20 @@ function handleExistingOutputs(targetID) {
 
     for (let i = 1; i < max; i++) {
         if (!map[i]) {
-            if (existingInputs[i] && i > minCounter) {
-                let old = oldLeftovers.find(a => a.number === i);
-                if (old) {
-                    targetLeftovers[targetID].push(old);
-                } else {
-                    targetLeftovers[targetID].push({
-                        number: i,
-                        lastTry: beforeDate,
-                    })
+            target.packages.forEach(p=>{
+                if (existingInputs[i] && i >= p.start && i < p.end) {
+                    let old = oldLeftovers.find(a => a.number === i);
+                    if (old) {
+                        targetLeftovers[targetID].push(old);
+                    } else {
+                        targetLeftovers[targetID].push({
+                            number: i,
+                            lastTry: beforeDate,
+                        })
+                    }
                 }
-            }
+            })
+            
         }
     }
     activeCounters[targetID] = Math.max(max, minCounter);

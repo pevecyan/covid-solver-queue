@@ -1,0 +1,14 @@
+{
+    "project": "Sidranje spojin iz kitajskih zelisc na 3CL Pro SARS-CoV-2 (tarca 10)",
+    "pi": "Sebastian Plesko",
+    "description": " basic description ",
+    "targets": [
+        {
+            "id":1,
+            "packages": [
+                {"start":0, "end": 5000},
+                {"start":14000, "end": 15000}
+            ]
+        }
+    ]
+}
