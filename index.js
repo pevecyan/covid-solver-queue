@@ -435,6 +435,7 @@ function handleExistingFiles() {
     console.log(dockingConfig)
     //Get all targets
     availableTargets = dockingConfig.targets;
+    //Sort probably not required, since it is being sorted by config file
 
     //Get existing input files 
     let existing = fs.readdirSync(`${config.path}/compounds_zipped`);
