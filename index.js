@@ -6,12 +6,15 @@ const express = require('express'),
     multer = require('multer'),
     MongoClient = require('mongodb').MongoClient,
     Path = require('path'),
-    zipper = require("zip-local");
-var upload = multer({dest: 'uploads/'});
+    zipper = require("zip-local"),
+     mysql = require('mysql'),  
+     naturalSort=require('javascript-natural-sort'); 
+
+const colors = require('colors/safe'); 
 const config = require('./config.json');
 const dockingConfig = require('./dockingConfig.json');
+var upload = multer({dest: `${config.path}/uploads/`}); 
 const app = express();
-
 app.use(express.urlencoded({extended: true}));
 app.use(express.json());
 app.use(morgan('tiny'));
@@ -25,16 +28,32 @@ let oldClientTarget = 0;
 let maxCount = 0;
 let existingInputs = {};
 let existingOutputs = {};
+var mysqlconn;
+
+function createConnMysql() {
+     mysqlconn = mysql.createConnection({ 
+	host: config.mysqlHost, 
+	user: config.mysqlUser, 
+	password: config.mysqlPass, 
+	database: config.mysqlDb 
+});
+}
+
+function connectMysql() { 
+	mysqlconn.connect(function(err) { 
+		if (err) throw err;	  
+		console.log(colors.yellow("Mysql Connected")); 
+	});  
+} 
 
 const dbName = 'covid';
 const client = new MongoClient(config.mongo, {useUnifiedTopology: true});
-
 let db;
 
 let uploadBlacklist = {}
 let uploadPenalty = {}
 
-const minCounter = 1300;
+const minCounter = 0;
 
 client.connect(function (err) {
     startServer();
@@ -43,12 +62,13 @@ client.connect(function (err) {
     db = client.db(dbName);
 });
 
+//connectMysql();
 function startServer() {
     console.log('Started existing files handle');
     handleExistingFiles();
     console.log('Existing files handled');
-    app.listen(8888, () => {
-        console.log('Server started listening on port 8888')
+    app.listen(config.proxyPort, () => {	// bostjan
+        console.log('Server started listening on port %d',config.proxyPort) 
     });
 }
 
@@ -56,27 +76,31 @@ setInterval(() => {
     handleExistingFiles()
 }, 1000 * 60 * 125);
 
-app.use((req, res, next) => {
+app.use((req, res, next) => {	
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     req.requestIP = ip;
-    let {ClientGUID, ThreadCount} = req.body;
     if (uploadBlacklist[ip]) {
         res.status(403);
         res.end();
         return;
     }
+    let {ClientGUID, ThreadCount, Client} = req.body; 
     console.log(req.body);
-
-    if (db) {
-        let history = db.collection('history');
-        let data = {ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount};
+    if (req.method === 'POST' && !req.path.match(/\/[0-9]+\/file\/[0-9]+/)) { 
+     if (db) {
+        let history = db.collection(config.collection); 
+        let data = {ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount, Client}; 
         if (ClientGUID) {
             data.ClientGUID = ClientGUID;
         }
         if (ThreadCount) {
             data.ThreadCount = ThreadCount;
         }
+	if (Client) { 
+	    data.Client = Client; 
+	} 
         history.insertOne(data);
+     }
     }
     next();
 });
@@ -181,20 +205,35 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
         res.end();
         return
     }
-    let {zipFlag} = req.query;
-    let {id, counter} = req.params;
+   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+   let {ClientGUID, ThreadCount, Client} = req.body; 
+   let {zipFlag} = req.query;
+   let {id, counter} = req.params;
+    if (db) {
+        let history = db.collection(config.collection); 
+        let data = {ip, path: req.path, method: req.method, timestamp: new Date(), ClientGUID, ThreadCount, Client}; 
+        if (ClientGUID) {
+            data.ClientGUID = ClientGUID;
+        }
+        if (ThreadCount) {
+            data.ThreadCount = ThreadCount;
+        }
+	if (Client) { 
+	    data.Client = Client; 
+	} 
+        history.insertOne(data);
+     }
     try {
-        let file = fs.statSync(__dirname + `/uploads/${req.file.filename}`);
+        let file = fs.statSync(`${config.path}/uploads/${req.file.filename}`); 
         if (file.size == 0) {
-            fs.unlinkSync(__dirname + `/uploads/${req.file.filename}`)
-            
+            fs.unlinkSync(`${config.path}/uploads/${req.file.filename}`)             
             if (uploadPenalty[req.requestIP]) {
                 uploadPenalty[req.requestIP]++;
                 if (uploadPenalty[req.requestIP] > 4) {
                     uploadBlacklist[req.requestIP] = setTimeout(()=>{
                         delete uploadBlacklist[req.requestIP];
                         delete uploadPenalty[req.requestIP];
-                    }, 1000 * 60 * 10)
+                    }, 1000 * 60 * 120)
                 }
             } else {
                 uploadPenalty[req.requestIP] = 1;
@@ -204,12 +243,11 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
                 delete uploadPenalty[req.requestIP]
             }
             if (zipFlag) {
-                fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf.zip`)
+                fs.renameSync(`${config.path}/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf.zip`) 
             } else {
-                fs.renameSync(__dirname + `/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf`)
+                fs.renameSync( `${config.path}/uploads/${req.file.filename}`, `${config.path}/targets/${id}/up/OUT_${counter}.sdf`) 
             }
             existingOutputs[id][counter] = true;
-        
         }
         res.end();
     } catch (err) {
@@ -222,6 +260,36 @@ app.post('/:id/file/:counter', upload.single("data"), (req, res) => {
 app.get('/blacklist', (req, res)=>{
     res.end(JSON.stringify(Object.keys(uploadBlacklist)));
 })
+
+app.get('/results-done', (req, res) => {
+	let out="";
+	let param=req.query; //target number
+	fs.readdir(`${config.path}/targets/`+param["t"]+`/up`,(err,files) => {
+		if (err) {
+			console.log("No files found");
+			out = ("No target data found");
+			res.end(out);
+		} else
+		{
+			console.log(`${config.path}/targets/`+param["t"]+`/up`);
+			let existingFiles = files.length;
+			fs.readdir(`${config.path}/compounds_zipped`,(err2,files2) =>{
+				if (err2) {
+					console.log("No compounds found");
+					out = "" + existingFiles + ";99999";
+					res.end(out);
+				} else
+				{
+					console.log(`${config.path}/compounds_zipped`);
+					let existingCompounds = files2.length;
+					console.log(colors.yellow("Existing files for target "+param["t"]+": " + existingFiles + ";" + existingCompounds));
+					out = "" + existingFiles + ";" + existingCompounds;
+					res.end(out);
+				}
+			});
+		}
+	});
+});
 
 app.get('/current', (req, res) => {
     let out = "";
@@ -276,6 +344,28 @@ app.get('/old', (req, res) => {
 
 app.get('/health', (req, res) => res.end('ok'));
 
+app.get('/messages',(req,res) =>{
+	let {LastMsgRead} = req.query;
+	let out="";
+	timenow = new Date().toISOString().slice(0,19).replace('T',' ');
+	createConnMysql();
+	connectMysql();
+	console.log(colors.yellow("Connected to mysql"));
+	let mysqlquery = "select * from covid_messages where validFrom <='" + timenow + "' and validTo >= '" + timenow + "'";
+	if (LastMsgRead) {
+		mysqlquery += " and id> " + LastMsgRead;
+	}
+	mysqlconn.query(mysqlquery,function(err,result,fields){
+		if (err) throw (err);
+		console.log(colors.yellow("Data read from mysql"));
+		out = JSON.stringify(result);
+		console.log(colors.red("/MESSAGES result: ") + out);
+		mysqlconn.end();
+		console.log(colors.yellow("Disconnected from mysql"));
+		res.end(out);
+	});
+});
+
 app.use("*", (req, res) => {
     res.status(404);
     res.end();
@@ -322,8 +412,8 @@ function isLeftover(number, target) {
 //});
 
 
-deleteFolderRecursive('uploads')
-fs.mkdirSync('uploads')
+deleteFolderRecursive(`${config.path}/uploads`) 
+fs.mkdirSync(`${config.path}/uploads`) 
 //handleExistingFiles();
 
 
@@ -347,7 +437,7 @@ function handleExistingFiles() {
     availableTargets = dockingConfig.targets;
 
     //Get existing input files 
-    let existing = fs.readdirSync(`${config.path}/compounds`);
+    let existing = fs.readdirSync(`${config.path}/compounds_zipped`);
     if (!existing) {
         return;
     }
